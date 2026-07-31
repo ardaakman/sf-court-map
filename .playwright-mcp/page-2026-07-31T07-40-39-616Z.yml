@@ -1,0 +1,81 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic:
+      - generic:
+        - button "16" [active] [ref=e6] [cursor=pointer]
+        - button "47" [ref=e8] [cursor=pointer]
+        - button "1" [ref=e10] [cursor=pointer]
+        - button "47" [ref=e12] [cursor=pointer]
+        - button "0" [ref=e14] [cursor=pointer]
+        - button "48" [ref=e16] [cursor=pointer]
+        - button "3" [ref=e18] [cursor=pointer]
+        - button "2" [ref=e20] [cursor=pointer]
+        - button "13" [ref=e22] [cursor=pointer]
+        - button "3" [ref=e24] [cursor=pointer]
+        - button "0" [ref=e26] [cursor=pointer]
+        - button "0" [ref=e28] [cursor=pointer]
+        - button "15" [ref=e30] [cursor=pointer]
+        - button "0" [ref=e32] [cursor=pointer]
+        - button "63" [ref=e34] [cursor=pointer]
+        - button "42" [ref=e36] [cursor=pointer]
+        - button "15" [ref=e38] [cursor=pointer]
+        - button "26" [ref=e40] [cursor=pointer]
+        - button "31" [ref=e42] [cursor=pointer]
+        - button "51" [ref=e44] [cursor=pointer]
+        - button "0" [ref=e46] [cursor=pointer]
+        - button "2" [ref=e48] [cursor=pointer]
+        - button "3" [ref=e50] [cursor=pointer]
+        - button "0" [ref=e52] [cursor=pointer]
+        - button "21" [ref=e54] [cursor=pointer]
+        - button "37" [ref=e56] [cursor=pointer]
+        - button "16" [ref=e58] [cursor=pointer]
+        - button "0" [ref=e60] [cursor=pointer]
+      - generic [ref=e96]:
+        - generic [ref=e99]:
+          - img "Alice Marble" [ref=e100]
+          - heading "Alice Marble" [level=2] [ref=e101]
+          - paragraph [ref=e102]: 1200 Greenwich St, San Francisco, CA 94109, USA
+          - paragraph [ref=e103]: 4 tennis courts · 16 open court-slots
+          - generic [ref=e104]: 12p–3p
+          - link "Book on rec.us ↗" [ref=e106] [cursor=pointer]:
+            - /url: https://www.rec.us/locations/81cd2b08-8ea6-40ee-8c89-aeba92506576
+          - paragraph [ref=e107]: rec.us opens on today's date — re-pick your day there.
+        - button "Close popup" [ref=e109] [cursor=pointer]: ×
+    - generic:
+      - generic [ref=e62]:
+        - button "Zoom in" [ref=e63] [cursor=pointer]: +
+        - button "Zoom out" [ref=e64] [cursor=pointer]: −
+      - generic [ref=e65]:
+        - link "Leaflet" [ref=e66] [cursor=pointer]:
+          - /url: https://leafletjs.com
+        - text: "| ©"
+        - link "OpenStreetMap" [ref=e71] [cursor=pointer]:
+          - /url: https://www.openstreetmap.org/copyright
+        - text: contributors
+  - generic [ref=e72]:
+    - generic [ref=e73]:
+      - heading "SF Court Map" [level=1] [ref=e74]
+      - generic [ref=e75]:
+        - generic [ref=e76]: updated 12:39 AM
+        - button "Refresh data" [ref=e77] [cursor=pointer]: ⟳
+    - group "Sport" [ref=e78]:
+      - button "Tennis" [ref=e79] [cursor=pointer]
+      - button "Pickleball" [ref=e80] [cursor=pointer]
+    - group "Date" [ref=e81]:
+      - button "Today" [ref=e82] [cursor=pointer]
+      - button "Sat 8/1" [ref=e83] [cursor=pointer]
+      - button "Sun 8/2" [ref=e84] [cursor=pointer]
+      - button "Mon 8/3" [ref=e85] [cursor=pointer]
+      - button "Tue 8/4" [ref=e86] [cursor=pointer]
+      - button "Wed 8/5" [ref=e87] [cursor=pointer]
+      - button "Thu 8/6" [ref=e88] [cursor=pointer]
+    - group "Time of day" [ref=e89]:
+      - button "All day" [ref=e90] [cursor=pointer]
+      - button "Morning" [ref=e91] [cursor=pointer]
+      - button "Afternoon" [ref=e92] [cursor=pointer]
+      - button "Evening" [ref=e93] [cursor=pointer]
+    - paragraph [ref=e94]:
+      - text: Data from
+      - link "rec.us" [ref=e95] [cursor=pointer]:
+        - /url: https://www.rec.us/organizations/san-francisco-rec-park
+      - text: · pin number = open court-slots
