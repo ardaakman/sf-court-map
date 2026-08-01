@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchLocations, fetchSchedule, next7Days, sfNow } from './api.js'
+import {
+  TIME_WINDOWS,
+  fetchLocations,
+  fetchSchedule,
+  next7Days,
+  sfNow,
+  spansFor,
+} from './api.js'
 import Controls from './components/Controls.jsx'
 import MapView from './components/MapView.jsx'
 
@@ -43,6 +50,35 @@ export default function App() {
     load()
   }, [load])
 
+  // Days (for the selected sport) and time windows (for the selected day)
+  // with zero bookable windows anywhere, so their buttons can be grayed out.
+  // Only computed once every location's schedule has arrived.
+  const { emptyDays, emptyWindows } = useMemo(() => {
+    const emptyDays = new Set()
+    const emptyWindows = new Set()
+    if (!locations || pendingCount > 0) return { emptyDays, emptyWindows }
+    const now = sfNow()
+    for (const day of days) {
+      const nowMin = day === now.date ? now.minutes : null
+      const hasAny = locations.some(
+        (loc) =>
+          spansFor(schedules[loc.id], day, sport, 'all', nowMin).reservable
+            .length > 0
+      )
+      if (!hasAny) emptyDays.add(day)
+    }
+    const nowMin = selectedDate === now.date ? now.minutes : null
+    for (const windowKey of Object.keys(TIME_WINDOWS)) {
+      const hasAny = locations.some(
+        (loc) =>
+          spansFor(schedules[loc.id], selectedDate, sport, windowKey, nowMin)
+            .reservable.length > 0
+      )
+      if (!hasAny) emptyWindows.add(windowKey)
+    }
+    return { emptyDays, emptyWindows }
+  }, [locations, schedules, pendingCount, days, sport, selectedDate])
+
   if (error) {
     return (
       <div className="status-screen">
@@ -83,6 +119,8 @@ export default function App() {
         fetchedAt={fetchedAt}
         onRefresh={load}
         loadingCount={pendingCount}
+        emptyDays={emptyDays}
+        emptyWindows={emptyWindows}
       />
     </div>
   )

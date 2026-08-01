@@ -1,14 +1,19 @@
 import { useState } from 'react'
 import { SPORTS, TIME_WINDOWS, formatDateChip, sfNow } from '../api.js'
 
-function Segmented({ options, selected, onSelect, ariaLabel }) {
+function ChipRow({ options, selected, onSelect, ariaLabel }) {
   return (
-    <div className="segmented" role="group" aria-label={ariaLabel}>
-      {options.map(({ value, label }) => (
+    <div className="chip-row" role="group" aria-label={ariaLabel}>
+      {options.map(({ value, label, disabled }) => (
         <button
           key={value}
           type="button"
-          className={selected === value ? 'seg-active' : ''}
+          disabled={disabled && selected !== value}
+          className={[
+            'chip',
+            selected === value ? 'chip-active' : '',
+            disabled ? 'chip-disabled' : '',
+          ].join(' ')}
           onClick={() => onSelect(value)}
         >
           {label}
@@ -29,6 +34,8 @@ export default function Controls({
   fetchedAt,
   onRefresh,
   loadingCount,
+  emptyDays,
+  emptyWindows,
 }) {
   const [open, setOpen] = useState(
     typeof window === 'undefined' || window.innerWidth > 640
@@ -44,17 +51,16 @@ export default function Controls({
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          <span className="title">🎾 SF Court Map</span>
+          SF Court Map
           <span className={`chevron ${open ? 'up' : ''}`}>⌄</span>
         </button>
         <div className="refresh">
           {loadingCount > 0 ? (
-            <span className="loading-note">
-              <span className="spinner spinner-sm" /> {loadingCount}
-            </span>
+            <span className="loading-note">loading {loadingCount}…</span>
           ) : (
             fetchedAt && (
               <span className="loading-note">
+                updated{' '}
                 {fetchedAt.toLocaleTimeString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
@@ -75,7 +81,7 @@ export default function Controls({
 
       {open && (
         <div className="controls-body">
-          <Segmented
+          <ChipRow
             ariaLabel="Sport"
             options={Object.entries(SPORTS).map(([value, { label }]) => ({
               value,
@@ -84,23 +90,22 @@ export default function Controls({
             selected={sport}
             onSelect={onSelectSport}
           />
-          <div className="day-row" role="group" aria-label="Date">
-            {days.map((d) => (
-              <button
-                key={d}
-                type="button"
-                className={`day-chip ${selectedDate === d ? 'day-active' : ''}`}
-                onClick={() => onSelectDate(d)}
-              >
-                {formatDateChip(d, today)}
-              </button>
-            ))}
-          </div>
-          <Segmented
+          <ChipRow
+            ariaLabel="Date"
+            options={days.map((d) => ({
+              value: d,
+              label: formatDateChip(d, today),
+              disabled: emptyDays.has(d),
+            }))}
+            selected={selectedDate}
+            onSelect={onSelectDate}
+          />
+          <ChipRow
             ariaLabel="Time of day"
             options={Object.entries(TIME_WINDOWS).map(([value, { label }]) => ({
               value,
               label,
+              disabled: emptyWindows.has(value),
             }))}
             selected={timeOfDay}
             onSelect={onSelectTimeOfDay}
