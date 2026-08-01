@@ -1,0 +1,46 @@
+- generic [ref=f3e2]:
+  - banner [ref=f3e3]:
+    - link "arda akman" [ref=f3e4] [cursor=pointer]:
+      - /url: /
+    - navigation [ref=f3e5]:
+      - link "blog" [ref=f3e6] [cursor=pointer]:
+        - /url: /blog/
+      - link "github" [ref=f3e7] [cursor=pointer]:
+        - /url: https://github.com/ardaakman
+      - link "linkedin" [ref=f3e8] [cursor=pointer]:
+        - /url: https://www.linkedin.com/in/arda-akman/
+      - link "twitter" [ref=f3e9] [cursor=pointer]:
+        - /url: https://x.com/arda_akmann
+      - button "Toggle dark mode" [ref=f3e10] [cursor=pointer]
+  - main [ref=f3e13]:
+    - heading "hi, i'm arda." [level=1] [ref=f3e14]
+    - generic [ref=f3e15]:
+      - paragraph [ref=f3e16]: I build backend systems, infrastructure, and developer tooling.
+      - paragraph [ref=f3e17]:
+        - text: Currently at
+        - link "Thunder Compute" [ref=f3e18] [cursor=pointer]:
+          - /url: https://thundercompute.com
+        - text: . Previously a founding engineer at
+        - strong [ref=f3e19]: Delve (YC W24)
+        - text: and a backend engineer at
+        - link "Sigma Computing" [ref=f3e20] [cursor=pointer]:
+          - /url: https://www.sigmacomputing.com/
+        - text: . Studied CS at Berkeley.
+      - paragraph [ref=f3e21]:
+        - text: I like history a lot —
+        - emphasis [ref=f3e22]: The Crusades Through Arab Eyes
+        - text: is one of my favorite books. I ponder a bunch, and lately I've been looking more into robots.
+      - paragraph [ref=f3e23]:
+        - text: Reach out if you want to chat, or if you have good learning sources in robotics. Feel free to
+        - link "DM me on Twitter" [ref=f3e24] [cursor=pointer]:
+          - /url: https://x.com/arda_akmann
+        - text: .
+    - generic [ref=f3e25]:
+      - heading "projects" [level=2] [ref=f3e26]
+      - list [ref=f3e27]:
+        - listitem [ref=f3e28]:
+          - link "sf court map" [ref=f3e29] [cursor=pointer]:
+            - /url: https://sf-court-map.netlify.app
+          - text: — live map of San Francisco's public tennis & pickleball courts, showing open booking slots for the week ahead with direct links to book each court.
+          - link "source" [ref=f3e30] [cursor=pointer]:
+            - /url: https://github.com/ardaakman/sf-court-map

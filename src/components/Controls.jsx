@@ -1,13 +1,14 @@
-import { SPORTS, TIME_WINDOWS, formatDateChip, sfToday } from '../api.js'
+import { useState } from 'react'
+import { SPORTS, TIME_WINDOWS, formatDateChip, sfNow } from '../api.js'
 
-function ChipRow({ options, selected, onSelect, ariaLabel }) {
+function Segmented({ options, selected, onSelect, ariaLabel }) {
   return (
-    <div className="chip-row" role="group" aria-label={ariaLabel}>
+    <div className="segmented" role="group" aria-label={ariaLabel}>
       {options.map(({ value, label }) => (
         <button
           key={value}
           type="button"
-          className={`chip ${selected === value ? 'chip-active' : ''}`}
+          className={selected === value ? 'seg-active' : ''}
           onClick={() => onSelect(value)}
         >
           {label}
@@ -18,7 +19,7 @@ function ChipRow({ options, selected, onSelect, ariaLabel }) {
 }
 
 export default function Controls({
-  dates,
+  days,
   selectedDate,
   onSelectDate,
   sport,
@@ -27,62 +28,95 @@ export default function Controls({
   onSelectTimeOfDay,
   fetchedAt,
   onRefresh,
+  loadingCount,
 }) {
-  const today = sfToday()
+  const [open, setOpen] = useState(
+    typeof window === 'undefined' || window.innerWidth > 640
+  )
+  const today = sfNow().date
+
   return (
     <div className="controls">
       <div className="controls-header">
-        <h1>SF Court Map</h1>
+        <button
+          type="button"
+          className="collapse-btn"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <span className="title">🎾 SF Court Map</span>
+          <span className={`chevron ${open ? 'up' : ''}`}>⌄</span>
+        </button>
         <div className="refresh">
-          {fetchedAt && (
-            <span>
-              updated{' '}
-              {fetchedAt.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
+          {loadingCount > 0 ? (
+            <span className="loading-note">
+              <span className="spinner spinner-sm" /> {loadingCount}
             </span>
+          ) : (
+            fetchedAt && (
+              <span className="loading-note">
+                {fetchedAt.toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            )
           )}
-          <button type="button" onClick={onRefresh} aria-label="Refresh data">
+          <button
+            type="button"
+            className="refresh-btn"
+            onClick={onRefresh}
+            aria-label="Refresh data"
+          >
             ⟳
           </button>
         </div>
       </div>
-      <ChipRow
-        ariaLabel="Sport"
-        options={Object.entries(SPORTS).map(([value, { label }]) => ({
-          value,
-          label,
-        }))}
-        selected={sport}
-        onSelect={onSelectSport}
-      />
-      <ChipRow
-        ariaLabel="Date"
-        options={dates.map((d) => ({ value: d, label: formatDateChip(d, today) }))}
-        selected={selectedDate}
-        onSelect={onSelectDate}
-      />
-      <ChipRow
-        ariaLabel="Time of day"
-        options={Object.entries(TIME_WINDOWS).map(([value, { label }]) => ({
-          value,
-          label,
-        }))}
-        selected={timeOfDay}
-        onSelect={onSelectTimeOfDay}
-      />
-      <p className="credit">
-        Data from{' '}
-        <a
-          href="https://www.rec.us/organizations/san-francisco-rec-park"
-          target="_blank"
-          rel="noreferrer"
-        >
-          rec.us
-        </a>{' '}
-        · pin number = open court-slots
-      </p>
+
+      {open && (
+        <div className="controls-body">
+          <Segmented
+            ariaLabel="Sport"
+            options={Object.entries(SPORTS).map(([value, { label }]) => ({
+              value,
+              label,
+            }))}
+            selected={sport}
+            onSelect={onSelectSport}
+          />
+          <div className="day-row" role="group" aria-label="Date">
+            {days.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={`day-chip ${selectedDate === d ? 'day-active' : ''}`}
+                onClick={() => onSelectDate(d)}
+              >
+                {formatDateChip(d, today)}
+              </button>
+            ))}
+          </div>
+          <Segmented
+            ariaLabel="Time of day"
+            options={Object.entries(TIME_WINDOWS).map(([value, { label }]) => ({
+              value,
+              label,
+            }))}
+            selected={timeOfDay}
+            onSelect={onSelectTimeOfDay}
+          />
+          <p className="credit">
+            Pin = bookable windows · data from{' '}
+            <a
+              href="https://www.rec.us/organizations/san-francisco-rec-park"
+              target="_blank"
+              rel="noreferrer"
+            >
+              rec.us
+            </a>
+          </p>
+        </div>
+      )}
     </div>
   )
 }

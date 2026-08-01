@@ -21,16 +21,21 @@ ones have openings without clicking through each one.
 
 ## How data flows
 
-One unauthenticated request, made directly from the browser (CORS is `*`):
+Unauthenticated requests, made directly from the browser (CORS is `*`):
 
-```
-GET https://api.rec.us/v1/locations/availability?publishedSites=true&organizationSlug=san-francisco-rec-park
-```
+1. `GET /v1/locations/availability?publishedSites=true&organizationSlug=san-francisco-rec-park`
+   — location metadata only (names, lat/lng, images, court sports). Its
+   per-court `availableSlots` are **not** used: they list free court time that
+   isn't necessarily bookable (SF uses fixed timeslots), which produced phantom
+   availability in v1 of this app.
+2. `GET /v1/locations/{id}/schedule?startDate=…&endDate=…` — one call per
+   location, the same endpoint rec.us's own "Book Now" tab uses. Each court-day
+   is a list of spans typed `RESERVATION` (taken), `RESERVABLE` (bookable — the
+   only thing counted on the map) or `OPEN` (free walk-up play, shown as a note
+   in the popup).
 
-Returns every location with `lat`/`lng` and per-court `availableSlots` as local
-SF time strings (`"2026-07-31 12:30:00"`, 30-min increments, ~7 days out).
-Court sports are matched by sport ID (`src/api.js`): tennis
-`bd745b6e-…`, pickleball `aaaaaaaa-…`.
+Court sports are matched by sport ID (`src/api.js`): tennis `bd745b6e-…`,
+pickleball `aaaaaaaa-…`.
 
 **Fallback note:** the API's WAF blocks non-browser clients (curl without
 `sec-fetch-*` headers) but allows any origin from real browsers. If rec.us ever

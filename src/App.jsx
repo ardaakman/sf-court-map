@@ -1,47 +1,53 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { availableDates, fetchAvailability, sfToday } from './api.js'
+import { fetchLocations, fetchSchedule, next7Days, sfNow } from './api.js'
 import Controls from './components/Controls.jsx'
 import MapView from './components/MapView.jsx'
 
 export default function App() {
   const [locations, setLocations] = useState(null)
+  const [schedules, setSchedules] = useState({})
+  const [pendingCount, setPendingCount] = useState(0)
   const [error, setError] = useState(null)
   const [fetchedAt, setFetchedAt] = useState(null)
-  const [selectedDate, setSelectedDate] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(() => sfNow().date)
   const [sport, setSport] = useState('tennis')
   const [timeOfDay, setTimeOfDay] = useState('all')
+
+  const days = useMemo(() => next7Days(), [])
 
   const load = useCallback(async () => {
     setError(null)
     try {
-      const data = await fetchAvailability()
-      setLocations(data)
+      const locs = await fetchLocations()
+      setLocations(locs)
+      setSchedules({})
+      setPendingCount(locs.length)
       setFetchedAt(new Date())
-      setSelectedDate((current) => {
-        const dates = availableDates(data)
-        if (current && dates.includes(current)) return current
-        const today = sfToday()
-        return dates.includes(today) ? today : dates[0] ?? null
+      const [start, end] = [days[0], days[days.length - 1]]
+      locs.forEach((loc) => {
+        fetchSchedule(loc.id, start, end)
+          .then((byDate) => {
+            setSchedules((prev) => ({ ...prev, [loc.id]: byDate }))
+          })
+          .catch(() => {
+            setSchedules((prev) => ({ ...prev, [loc.id]: {} }))
+          })
+          .finally(() => setPendingCount((n) => n - 1))
       })
     } catch (err) {
       setError(err.message || 'Failed to load availability')
     }
-  }, [])
+  }, [days])
 
   useEffect(() => {
     load()
   }, [load])
 
-  const dates = useMemo(
-    () => (locations ? availableDates(locations) : []),
-    [locations]
-  )
-
   if (error) {
     return (
       <div className="status-screen">
         <p>Could not load rec.us availability: {error}</p>
-        <button type="button" onClick={load}>
+        <button type="button" className="retry" onClick={load}>
           Retry
         </button>
       </div>
@@ -51,6 +57,7 @@ export default function App() {
   if (!locations) {
     return (
       <div className="status-screen">
+        <div className="spinner" />
         <p>Loading SF court availability…</p>
       </div>
     )
@@ -60,12 +67,13 @@ export default function App() {
     <div className="app">
       <MapView
         locations={locations}
+        schedules={schedules}
         selectedDate={selectedDate}
         sport={sport}
         timeOfDay={timeOfDay}
       />
       <Controls
-        dates={dates}
+        days={days}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         sport={sport}
@@ -74,6 +82,7 @@ export default function App() {
         onSelectTimeOfDay={setTimeOfDay}
         fetchedAt={fetchedAt}
         onRefresh={load}
+        loadingCount={pendingCount}
       />
     </div>
   )

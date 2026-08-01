@@ -3,136 +3,154 @@ export const SPORTS = {
   pickleball: { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', label: 'Pickleball' },
 }
 
-const API_URL =
-  'https://api.rec.us/v1/locations/availability?publishedSites=true&organizationSlug=san-francisco-rec-park'
+const API = 'https://api.rec.us/v1'
+const ORG_SLUG = 'san-francisco-rec-park'
 
 export const bookingUrl = (locationId) => `https://www.rec.us/locations/${locationId}`
 
-export async function fetchAvailability() {
-  const res = await fetch(API_URL, { headers: { Accept: 'application/json' } })
+async function getJson(url) {
+  const res = await fetch(url, { headers: { Accept: 'application/json' } })
   if (!res.ok) throw new Error(`rec.us API returned ${res.status}`)
-  const payload = await res.json()
+  return res.json()
+}
+
+// Location metadata (name, coordinates, images, which sports have courts).
+// Availability itself comes from fetchSchedule — the availableSlots on this
+// endpoint list free court time that is NOT necessarily bookable (SF uses
+// fixed timeslots), which is why it can't be trusted for open spots.
+export async function fetchLocations() {
+  const payload = await getJson(
+    `${API}/locations/availability?publishedSites=true&organizationSlug=${ORG_SLUG}`
+  )
   return payload
-    .map(({ location }) => transformLocation(location))
+    .map(({ location }) => {
+      let tennisCourts = 0
+      let pickleballCourts = 0
+      for (const court of location.courts ?? []) {
+        const ids = (court.sports ?? []).map((s) => s.sportId)
+        if (ids.includes(SPORTS.tennis.id)) tennisCourts++
+        if (ids.includes(SPORTS.pickleball.id)) pickleballCourts++
+      }
+      return {
+        id: location.id,
+        name: location.name,
+        lat: Number(location.lat),
+        lng: Number(location.lng),
+        address: location.formattedAddress,
+        thumbnail: location.images?.thumbnail ?? null,
+        tennisCourts,
+        pickleballCourts,
+      }
+    })
     .filter((loc) => loc.tennisCourts > 0 || loc.pickleballCourts > 0)
 }
 
-// Slot strings are local SF time, e.g. "2026-07-31 12:30:00", one entry per
-// court per open half hour. We fold them into, per location:
-//   slotsByDate[date][sport] = Map<"HH:MM", numberOfOpenCourts>
-function transformLocation(location) {
-  const slotsByDate = {}
-  let tennisCourts = 0
-  let pickleballCourts = 0
-
-  for (const court of location.courts ?? []) {
-    const sportIds = (court.sports ?? []).map((s) => s.sportId)
-    const courtSports = Object.keys(SPORTS).filter((key) =>
-      sportIds.includes(SPORTS[key].id)
-    )
-    if (courtSports.length === 0) continue
-    if (courtSports.includes('tennis')) tennisCourts++
-    if (courtSports.includes('pickleball')) pickleballCourts++
-
-    for (const slot of court.availableSlots ?? []) {
-      const [date, time] = slot.split(' ')
-      if (!date || !time) continue
-      const hhmm = time.slice(0, 5)
-      const day = (slotsByDate[date] ??= {})
-      for (const sport of courtSports) {
-        const times = (day[sport] ??= new Map())
-        times.set(hhmm, (times.get(hhmm) ?? 0) + 1)
+// The schedule endpoint is what rec.us's own "Book Now" tab uses. Every court
+// day is a list of spans, each RESERVATION (taken), RESERVABLE (bookable) or
+// OPEN (free walk-up play, not bookable).
+// Returns { 'YYYY-MM-DD': { tennis: {reservable: Span[], open: Span[]}, pickleball: {...} } }
+// where Span = { court, startMin, endMin }.
+export async function fetchSchedule(locationId, startDate, endDate) {
+  const data = await getJson(
+    `${API}/locations/${locationId}/schedule?startDate=${startDate}&endDate=${endDate}`
+  )
+  const byDate = {}
+  for (const [compact, courts] of Object.entries(data.dates ?? {})) {
+    const date = `${compact.slice(0, 4)}-${compact.slice(4, 6)}-${compact.slice(6, 8)}`
+    const day = (byDate[date] ??= {})
+    for (const court of courts) {
+      const sportKeys = Object.keys(SPORTS).filter((key) =>
+        (court.sports ?? []).some((s) => s.id === SPORTS[key].id)
+      )
+      if (sportKeys.length === 0) continue
+      for (const [span, ref] of Object.entries(court.schedule ?? {})) {
+        const type = ref?.referenceType
+        if (type !== 'RESERVABLE' && type !== 'OPEN') continue
+        const [start, end] = span.split(',').map((s) => s.trim())
+        const entry = {
+          court: court.courtNumber,
+          startMin: toMinutes(start),
+          endMin: toMinutes(end),
+        }
+        for (const key of sportKeys) {
+          const bucket = (day[key] ??= { reservable: [], open: [] })
+          bucket[type === 'RESERVABLE' ? 'reservable' : 'open'].push(entry)
+        }
       }
     }
+    for (const bucket of Object.values(day)) {
+      bucket.reservable.sort((a, b) => a.startMin - b.startMin)
+      bucket.open.sort((a, b) => a.startMin - b.startMin)
+    }
   }
+  return byDate
+}
 
-  return {
-    id: location.id,
-    name: location.name,
-    lat: Number(location.lat),
-    lng: Number(location.lng),
-    address: location.formattedAddress,
-    thumbnail: location.images?.thumbnail ?? null,
-    tennisCourts,
-    pickleballCourts,
-    slotsByDate,
-  }
+const toMinutes = (hhmm) => {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
 }
 
 export const TIME_WINDOWS = {
-  all: { label: 'All day', from: 0, to: 24 },
-  morning: { label: 'Morning', from: 0, to: 12 },
-  afternoon: { label: 'Afternoon', from: 12, to: 17 },
-  evening: { label: 'Evening', from: 17, to: 24 },
+  all: { label: 'Any time', from: 0, to: 24 * 60 },
+  morning: { label: 'Morning', from: 0, to: 12 * 60 },
+  afternoon: { label: 'Afternoon', from: 12 * 60, to: 17 * 60 },
+  evening: { label: 'Evening', from: 17 * 60, to: 24 * 60 },
 }
 
-function inWindow(hhmm, windowKey) {
-  const hour = Number(hhmm.slice(0, 2))
-  const { from, to } = TIME_WINDOWS[windowKey]
-  return hour >= from && hour < to
-}
-
-// Distinct open start times (sorted) and total court-slot count for the filters.
-export function slotsFor(location, date, sport, timeOfDay) {
-  const times = location.slotsByDate[date]?.[sport]
-  if (!times) return { startTimes: [], totalCourtSlots: 0 }
-  const startTimes = [...times.keys()]
-    .filter((t) => inWindow(t, timeOfDay))
-    .sort()
-  const totalCourtSlots = startTimes.reduce((sum, t) => sum + times.get(t), 0)
-  return { startTimes, totalCourtSlots }
-}
-
-// Union of dates present in the data, sorted ascending.
-export function availableDates(locations) {
-  const dates = new Set()
-  for (const loc of locations) {
-    for (const d of Object.keys(loc.slotsByDate)) dates.add(d)
+// Spans matching the filters. Past windows are dropped on today's date.
+export function spansFor(schedule, date, sport, timeOfDay, nowMin) {
+  const bucket = schedule?.[date]?.[sport]
+  if (!bucket) return { reservable: [], open: [] }
+  const { from, to } = TIME_WINDOWS[timeOfDay]
+  const keep = (s) =>
+    s.startMin < to && s.endMin > from && (nowMin == null || s.endMin > nowMin)
+  return {
+    reservable: bucket.reservable.filter(keep),
+    open: bucket.open.filter(keep),
   }
-  return [...dates].sort()
 }
 
-export function formatTime(hhmm) {
-  let [h, m] = hhmm.split(':').map(Number)
+export function formatMinutes(min) {
+  let h = Math.floor(min / 60)
+  const m = min % 60
   const suffix = h >= 12 ? 'p' : 'a'
   h = h % 12 || 12
   return m === 0 ? `${h}${suffix}` : `${h}:${String(m).padStart(2, '0')}${suffix}`
-}
-
-// Merge sorted "HH:MM" start times into contiguous ranges of 30-min slots:
-// ["07:00","07:30","08:00","16:00"] -> [["07:00","08:30"], ["16:00","16:30"]]
-// (range end = end of the last slot, i.e. last start + 30 min)
-export function timeRanges(startTimes) {
-  const ranges = []
-  for (const t of startTimes) {
-    const [h, m] = t.split(':').map(Number)
-    const minutes = h * 60 + m
-    const last = ranges[ranges.length - 1]
-    if (last && minutes === last.endMinutes) {
-      last.endMinutes = minutes + 30
-    } else {
-      ranges.push({ startMinutes: minutes, endMinutes: minutes + 30 })
-    }
-  }
-  const toHHMM = (mins) =>
-    `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
-  return ranges.map((r) => [toHHMM(r.startMinutes), toHHMM(r.endMinutes)])
 }
 
 export function formatDateChip(dateStr, todayStr) {
   if (dateStr === todayStr) return 'Today'
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
-  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' })
-  return `${weekday} ${m}/${d}`
+  return `${date.toLocaleDateString('en-US', { weekday: 'short' })} ${m}/${d}`
 }
 
-// Today in SF regardless of viewer timezone.
-export function sfToday() {
-  return new Intl.DateTimeFormat('en-CA', {
+// Today and current minutes-of-day in SF, regardless of viewer timezone.
+export function sfNow() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Los_Angeles',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(new Date())
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  const get = (type) => parts.find((p) => p.type === type)?.value
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    minutes: Number(get('hour')) * 60 + Number(get('minute')),
+  }
+}
+
+export function next7Days() {
+  const { date } = sfNow()
+  const [y, m, d] = date.split('-').map(Number)
+  const days = []
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(Date.UTC(y, m - 1, d + i))
+    days.push(dt.toISOString().slice(0, 10))
+  }
+  return days
 }
